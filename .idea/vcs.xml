@@ -4,5 +4,7 @@
     <mapping directory="$PROJECT_DIR$" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/v2-core" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/v2-periphery" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/v3-core" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/v3-periphery" vcs="Git" />
   </component>
 </project>

@@ -1,6 +1,7 @@
 pragma solidity =0.6.6;
 
 import '@uniswap/v2-core/contracts/interfaces/IUniswapV2Factory.sol';
+import '@uniswap/v2-core/contracts/interfaces/IUniswapV2Pair.sol';
 import '@uniswap/lib/contracts/libraries/TransferHelper.sol';
 
 import './interfaces/IUniswapV2Router02.sol';
@@ -362,7 +363,7 @@ contract UniswapV2Router02 is IUniswapV2Router02 {
             // 获取当前交易对的输入 Token 和输出 Token 地址
             (address input, address output) = (path[i], path[i + 1]);
             // 排序 Token 以确定的 Pair 地址和 token0/1 顺序
-            (address token0, ) = UniswapV2Library.sortTokens(input, output);  // 确定交易方向
+            (address token0, ) = UniswapV2Library.sortTokens(input, output); // 确定交易方向
             // 获取当前这一跳应该输出的金额 (amounts 是预先计算好的)
             uint amountOut = amounts[i + 1];
             // 确定 amount0Out 和 amount1Out (其中一个为 0，另一个为 output amount)
@@ -370,10 +371,10 @@ contract UniswapV2Router02 is IUniswapV2Router02 {
             // 确定接收地址 to：
             // 如果不是最后一跳 (i < path.length - 2)，则接收地址是下一个交易对 (output, path[i+2]) 的地址
             // 如果是最后一跳，则接收地址是最终用户 _to
-            address to = i < path.length - 2 ? UniswapV2Library.pairFor(factory, output, path[i + 2]) : _to;  // 倒数第二跳的索引就是最后一棒了
+            address to = i < path.length - 2 ? UniswapV2Library.pairFor(factory, output, path[i + 2]) : _to; // 倒数第二跳的索引就是最后一棒了
             // 调用 Pair 合约的 swap 函数执行交易
             // 注意：data 参数为空，表示不是 Flash Swap
-            IUniswapV2Pair(UniswapV2Library.pairFor(factory, input, output)).swap(   // 修改状态
+            IUniswapV2Pair(UniswapV2Library.pairFor(factory, input, output)).swap( // 修改状态
                 amount0Out,
                 amount1Out,
                 to,
@@ -381,7 +382,6 @@ contract UniswapV2Router02 is IUniswapV2Router02 {
             );
         }
     }
-
 
     // 精确输入 Token 换取尽可能多的 Token
     // @param amountIn: 输入的精确数量
@@ -394,14 +394,18 @@ contract UniswapV2Router02 is IUniswapV2Router02 {
         uint deadline
     ) external virtual override ensure(deadline) returns (uint[] memory amounts) {
         // 1. 根据路径计算每一步的输出数量 (amounts)
-        amounts = UniswapV2Library.getAmountsOut(factory, amountIn, path);  // amounts数组的所有元素预选算好
+        // 这个数组有什么用？ 滑点检查 (Slippage Check): 它会检查数组最后一个数（也就是你最终能拿到的钱）是否大于你设定的底线。
+        // 指导交易执行: 在后续的循环交易中，Router 不会再重新计算“该换多少钱”，而是直接查这个表：
+        // 告诉第一个池子：“我给你 amounts[0]，你要给我吐出 amounts[1] 这么多币。”
+        // 告诉第二个池子：“你会收到 amounts[1]，你要给我吐出 amounts[2] 这么多币。”
+        amounts = UniswapV2Library.getAmountsOut(factory, amountIn, path); // amounts数组的所有元素预选算好
         // 2. 检查最终输出是否满足滑点要求 (>= amountOutMin)
-        require(amounts[amounts.length - 1] >= amountOutMin, 'UniswapV2Router: INSUFFICIENT_OUTPUT_AMOUNT');   // 数组的最后一个元素即为uniswap输出的tokenB数量
+        require(amounts[amounts.length - 1] >= amountOutMin, 'UniswapV2Router: INSUFFICIENT_OUTPUT_AMOUNT'); // 数组的最后一个元素即为uniswap输出的tokenB数量
         // 3. 将输入 Token 转给第一个 Pair
         TransferHelper.safeTransferFrom(
             path[0],
             msg.sender,
-            UniswapV2Library.pairFor(factory, path[0], path[1]),    // 计算 Pair 合约的地址
+            UniswapV2Library.pairFor(factory, path[0], path[1]), // 计算 Pair 合约的地址
             amounts[0]
         );
         // 4. 执行多跳交易
@@ -457,7 +461,6 @@ contract UniswapV2Router02 is IUniswapV2Router02 {
     }
 
     // Token 换取精确的 ETH
-    // Token 换取精确的 ETH
     function swapTokensForExactETH(
         uint amountOut,
         uint amountInMax,
@@ -486,7 +489,6 @@ contract UniswapV2Router02 is IUniswapV2Router02 {
         TransferHelper.safeTransferETH(to, amounts[amounts.length - 1]);
     }
 
-    // 精确的 Token 换取 ETH
     // 精确的 Token 换取 ETH
     function swapExactTokensForETH(
         uint amountIn,
